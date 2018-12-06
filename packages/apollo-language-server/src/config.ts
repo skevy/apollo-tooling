@@ -93,13 +93,6 @@ export interface ServiceConfigFormat extends ConfigBase {
   localSchemaFile?: string;
 }
 
-export const DefaultServiceConfig = {
-  ...DefaultConfigBase,
-  endpoint: {
-    url: "http://localhost:4000/graphql"
-  }
-};
-
 export interface ConfigBaseFormat {
   client?: ClientConfigFormat;
   service?: ServiceConfigFormat;
@@ -334,7 +327,7 @@ export const loadConfig = async ({
 
   // selectivly apply defaults when loading the config
   if (config.client) config = merge({ client: DefaultClientConfig }, config);
-  if (config.service) config = merge({ service: DefaultServiceConfig }, config);
+  if (config.service) config = merge({ service: DefaultConfigBase }, config);
   if (engineConfig) config = merge(engineConfig, config);
 
   config = merge({ engine: DefaultEngineConfig }, config);

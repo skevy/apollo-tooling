@@ -24,6 +24,10 @@ export function schemaProviderFromConfig(
   config: ApolloConfig
 ): GraphQLSchemaProvider {
   if (isServiceConfig(config)) {
+    if (config.service.name) {
+      return new EngineSchemaProvider(config);
+    }
+
     if (config.service.localSchemaFile) {
       return new FileSchemaProvider({ path: config.service.localSchemaFile });
     }

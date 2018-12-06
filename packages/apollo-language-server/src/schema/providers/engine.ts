@@ -6,7 +6,13 @@ import gql from "graphql-tag";
 import { GraphQLSchema, buildClientSchema } from "graphql";
 
 import { ApolloEngineClient } from "../../engine";
-import { ClientConfig, parseServiceSpecificer } from "../../config";
+import {
+  ClientConfig,
+  ServiceConfig,
+  parseServiceSpecificer,
+  isClientConfig,
+  isServiceConfig
+} from "../../config";
 import {
   GraphQLSchemaProvider,
   SchemaChangeUnsubscribeHandler,
@@ -15,29 +21,49 @@ import {
 
 export class EngineSchemaProvider implements GraphQLSchemaProvider {
   private schema?: GraphQLSchema;
-  private client?: ApolloEngineClient;
+  private engineClient?: ApolloEngineClient;
 
-  constructor(private config: ClientConfig) {}
+  constructor(private config: ClientConfig | ServiceConfig) {}
   async resolveSchema(override: SchemaResolveConfig) {
     if (this.schema && (!override || !override.force)) return this.schema;
-    const { engine, client } = this.config;
+    const { engine, client, service } = this.config;
 
-    if (typeof client.service !== "string") {
-      throw new Error(
-        `Service name not found for client, found ${client.service}`
-      );
+    if (isClientConfig(this.config)) {
+      if (typeof client!.service !== "string") {
+        throw new Error(
+          `Service name not found for client, found ${client!.service}`
+        );
+      }
+    } else if (isServiceConfig(this.config)) {
+      if (typeof service!.name !== "string") {
+        throw new Error(
+          `Service name not found for service, found ${service!.name}`
+        );
+      }
     }
 
     // create engine client
-    if (!this.client) {
+    if (!this.engineClient) {
       if (!engine.apiKey) {
         throw new Error("ENGINE_API_KEY not found");
       }
-      this.client = new ApolloEngineClient(engine.apiKey, engine.endpoint);
+      this.engineClient = new ApolloEngineClient(
+        engine.apiKey,
+        engine.endpoint
+      );
     }
 
-    const [id, tag = "current"] = parseServiceSpecificer(client.service);
-    const { data, errors } = await this.client.execute({
+    // we know that client.service is a string, since it's checked above
+    const serviceName = client
+      ? (client.service as string)
+      : service
+      ? service.name
+      : null;
+    // TODO more clear error
+    if (!serviceName) throw new Error(`Unable to find service name for Engine`);
+
+    const [id, tag = "current"] = parseServiceSpecificer(serviceName);
+    const { data, errors } = await this.engineClient.execute({
       query: SCHEMA_QUERY,
       variables: {
         id,
