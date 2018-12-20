@@ -13,7 +13,6 @@ import {
 import { IntrospectionSchemaProvider } from "./introspection";
 import { EngineSchemaProvider } from "./engine";
 import { FileSchemaProvider } from "./file";
-import { createDecipher } from "crypto";
 
 export {
   GraphQLSchemaProvider,
