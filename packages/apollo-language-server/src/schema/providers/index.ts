@@ -13,6 +13,7 @@ import {
 import { IntrospectionSchemaProvider } from "./introspection";
 import { EngineSchemaProvider } from "./engine";
 import { FileSchemaProvider } from "./file";
+import { createDecipher } from "crypto";
 
 export {
   GraphQLSchemaProvider,
@@ -24,16 +25,16 @@ export function schemaProviderFromConfig(
   config: ApolloConfig
 ): GraphQLSchemaProvider {
   if (isServiceConfig(config)) {
-    if (config.service.name) {
-      return new EngineSchemaProvider(config);
-    }
-
     if (config.service.localSchemaFile) {
       return new FileSchemaProvider({ path: config.service.localSchemaFile });
     }
 
     if (config.service.endpoint) {
       return new IntrospectionSchemaProvider(config.service.endpoint);
+    }
+
+    if (config.service.name) {
+      return new EngineSchemaProvider(config);
     }
   }
 
@@ -53,5 +54,10 @@ export function schemaProviderFromConfig(
     }
   }
 
-  throw new Error("No provider was created for config");
+  throw new Error(`
+  Unable to fetch a schema, because no schema provider could be created.
+This may be because we couldn't find an ENGINE_API_KEY in the environment,
+no --key was passed in, no --endpoint was passed in, or a service name wasn't set in the apollo.config.js.
+For more information about configuring Apollo projects, see the guide here (https://bit.ly/2ByILPj).
+  `);
 }

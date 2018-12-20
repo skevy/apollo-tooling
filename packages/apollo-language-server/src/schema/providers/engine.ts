@@ -28,18 +28,24 @@ export class EngineSchemaProvider implements GraphQLSchemaProvider {
     if (this.schema && (!override || !override.force)) return this.schema;
     const { engine, client, service } = this.config;
 
+    let serviceName;
+
     if (isClientConfig(this.config)) {
       if (typeof client!.service !== "string") {
         throw new Error(
           `Service name not found for client, found ${client!.service}`
         );
       }
+
+      serviceName = client!.service as string;
     } else if (isServiceConfig(this.config)) {
       if (typeof service!.name !== "string") {
         throw new Error(
           `Service name not found for service, found ${service!.name}`
         );
       }
+
+      serviceName = service!.name;
     }
 
     // create engine client
@@ -53,14 +59,13 @@ export class EngineSchemaProvider implements GraphQLSchemaProvider {
       );
     }
 
-    // we know that client.service is a string, since it's checked above
-    const serviceName = client
-      ? (client.service as string)
-      : service
-      ? service.name
-      : null;
-    // TODO more clear error
-    if (!serviceName) throw new Error(`Unable to find service name for Engine`);
+    if (!serviceName)
+      throw new Error(
+        `Unable to find a service name that would link to a service in Engine.
+This may be because we couldn't find an ENGINE_API_KEY in the environment,
+no --key was passed in, or the service name wasn't set in the apollo.config.js.
+For more information about configuring Apollo projects, see the guide here (https://bit.ly/2ByILPj).`
+      );
 
     const [id, tag = "current"] = parseServiceSpecificer(serviceName);
     const { data, errors } = await this.engineClient.execute({
