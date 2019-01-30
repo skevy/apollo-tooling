@@ -4,6 +4,8 @@
 
 - `apollo`
   - Fix configuration loading and schema tag support [#925](https://github.com/apollographql/apollo-tooling/pull/925)
+- `vscode-apollo`
+  - Updated marketplace readme, color schemes, and icon to be prettier [#942](https://github.com/apollographql/apollo-tooling/pull/942)
 
 ## `apollo@2.3.1`
 
