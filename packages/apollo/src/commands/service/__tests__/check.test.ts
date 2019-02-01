@@ -1,4 +1,76 @@
-it("is turned on after summit", () => {});
+import { validateHistoricParams } from "../check";
+
+describe("Service Check", () => {
+  describe("Historic param validation", () => {
+    it("Returns valid results for valid input", () => {
+      const result = {
+        to: -0,
+        from: -86400,
+        queryCountThreshold: 1,
+        queryCountThresholdPercentage: 0.99
+      };
+
+      expect(
+        validateHistoricParams({
+          validationPeriod: "P1D",
+          queryCountThreshold: 1,
+          queryCountThresholdPercentage: 99
+        })
+      ).toEqual(result);
+
+      expect(
+        validateHistoricParams({
+          validationPeriod: "1",
+          queryCountThreshold: 1,
+          queryCountThresholdPercentage: 99
+        })
+      ).toEqual(result);
+    });
+
+    it("Throws on invalid validationPeriod", () => {
+      const getInvalidPeriod = validationPeriod => () =>
+        validateHistoricParams({
+          validationPeriod,
+          queryCountThreshold: 1,
+          queryCountThresholdPercentage: 99
+        });
+
+      // validationPeriod must be a parseable positive integer or of the ISO8601 format i.e. "P30D"
+      expect(getInvalidPeriod("invalid")).toThrow();
+      expect(getInvalidPeriod("1D")).toThrow();
+    });
+
+    it("Throws on invalid queryCountThreshold", () => {
+      const getInvalidThreshold = threshold => () =>
+        validateHistoricParams({
+          validationPeriod: "P1D",
+          queryCountThreshold: threshold,
+          queryCountThresholdPercentage: 99
+        });
+
+      // queryCountThreshold must be a positive integer
+      expect(getInvalidThreshold(0.1)).toThrow();
+      expect(getInvalidThreshold(0)).toThrow();
+      expect(getInvalidThreshold(-1)).toThrow();
+      expect(getInvalidThreshold("invalid")).toThrow();
+    });
+
+    it("Throws on invalid queryCountThresholdPercentage", () => {
+      const getInvalidThresholdPercentage = percentage => () =>
+        validateHistoricParams({
+          validationPeriod: "P1D",
+          queryCountThreshold: 1,
+          queryCountThresholdPercentage: percentage
+        });
+
+      // queryCountThresholdPercentage must be a number between 0 and 100 inclusive
+      expect(getInvalidThresholdPercentage(-1)).toThrow();
+      expect(getInvalidThresholdPercentage("invalid")).toThrow();
+    });
+  });
+});
+
+// it("is turned on after summit", () => {});
 
 // jest.mock("apollo-codegen-core/lib/localfs", () => {
 //   return require("../../../__mocks__/localfs");

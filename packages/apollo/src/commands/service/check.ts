@@ -20,8 +20,8 @@ export default class ServiceCheck extends ProjectCommand {
     }),
     validationPeriod: flags.string({
       description:
-        "The size of the time window with which to validate the schema against. Format should be a duration in ISO8601, see: https://en.wikipedia.org/wiki/ISO_8601#Durations",
-      default: "P1D"
+        "The size of the time window with which to validate the schema against. You may provide a number (in days), or an ISO8601 format duration for more granularity (see: https://en.wikipedia.org/wiki/ISO_8601#Durations)",
+      default: "1"
     }),
     queryCountThreshold: flags.integer({
       description:
@@ -49,7 +49,7 @@ export default class ServiceCheck extends ProjectCommand {
             const schema = await project.resolveSchema({ tag });
             ctx.gitContext = await gitInfo();
 
-            const historicParameters = this.validateHistoricParams({
+            const historicParameters = validateHistoricParams({
               validationPeriod: flags.validationPeriod,
               queryCountThreshold: flags.queryCountThreshold,
               queryCountThresholdPercentage: flags.queryCountThresholdPercentage
@@ -92,46 +92,58 @@ export default class ServiceCheck extends ProjectCommand {
     }
     return;
   }
+}
 
-  validateHistoricParams({
-    validationPeriod,
-    queryCountThreshold,
-    queryCountThresholdPercentage
-  }: {
-    validationPeriod: string;
-    queryCountThreshold: number;
-    queryCountThresholdPercentage: number;
-  }): HistoricQueryParameters {
-    const from = -1 * duration(validationPeriod).asSeconds();
+// Validates flag variables and:
+//   1) returns an input object for the checkSchema query (HistoricQueryParameters)
+//   2) or throws an error
+export function validateHistoricParams({
+  validationPeriod,
+  queryCountThreshold,
+  queryCountThresholdPercentage
+}: {
+  validationPeriod: string;
+  queryCountThreshold: number;
+  queryCountThresholdPercentage: number;
+}): HistoricQueryParameters {
+  // Is provided string a parseable number?
+  const isNumber = !Number.isNaN(Number(validationPeriod));
 
-    if (from >= 0) {
-      throw new Error(
-        "Please provide a valid duration for the --validationPeriod flag. Valid durations are represented in ISO 8601, see: https://en.wikipedia.org/wiki/ISO_8601#Durations."
-      );
-    }
+  // If it's a number, they gave us the count in days. Else, let moment parse the "P30D"
+  const windowInSeconds = isNumber
+    ? duration(Number(validationPeriod), "days").asSeconds()
+    : duration(validationPeriod).asSeconds();
 
-    if (!Number.isInteger(queryCountThreshold) || queryCountThreshold < 1) {
-      throw new Error(
-        "Please provide a valid number for the --queryCountThreshold flag. Valid numbers are integers in the range x >= 1."
-      );
-    }
+  const from = -1 * windowInSeconds;
 
-    if (
-      queryCountThresholdPercentage < 0 ||
-      queryCountThresholdPercentage > 100
-    ) {
-      throw new Error(
-        "Please provide a valid number for the --queryCountThresholdPercentage flag. Valid numbers are in the range 0 <= x <= 100."
-      );
-    }
-
-    const asPercentage = queryCountThresholdPercentage / 100;
-
-    return {
-      to: -0,
-      from,
-      queryCountThreshold,
-      queryCountThresholdPercentage: asPercentage
-    };
+  if (from >= 0) {
+    throw new Error(
+      "Please provide a valid duration for the --validationPeriod flag. Valid durations are represented either as a number (in days) or in ISO 8601 (see: https://en.wikipedia.org/wiki/ISO_8601#Durations)."
+    );
   }
+
+  if (!Number.isInteger(queryCountThreshold) || queryCountThreshold < 1) {
+    throw new Error(
+      "Please provide a valid number for the --queryCountThreshold flag. Valid numbers are integers in the range x >= 1."
+    );
+  }
+
+  if (
+    Number.isNaN(Number(queryCountThresholdPercentage)) ||
+    queryCountThresholdPercentage < 0 ||
+    queryCountThresholdPercentage > 100
+  ) {
+    throw new Error(
+      "Please provide a valid number for the --queryCountThresholdPercentage flag. Valid numbers are in the range 0 <= x <= 100."
+    );
+  }
+
+  const asPercentage = queryCountThresholdPercentage / 100;
+
+  return {
+    to: -0,
+    from,
+    queryCountThreshold,
+    queryCountThresholdPercentage: asPercentage
+  };
 }
